@@ -174,7 +174,6 @@ exibir_imagem: #inicio da matriz em a2
     for_j:
     bge t2, t3, final_for_j # if j >= x proxima linha
     #fazer operacoes
-    #add s5, a3, t4 #guarda o endereco do pixel da vez em s5
     #lbu s6, 0(s5) #s6 = Guarda o pixel
     mv a0, t2 #posicao x do pixel na matriz (parametro da funcao setpixel)
     mv a1, t0 #posicao y do pixel na matriz (parametro da funcao setpixel)
@@ -191,28 +190,154 @@ exibir_imagem: #inicio da matriz em a2
     
     #se passar por aqui eh pq nao eh borda
     #utilizar da filtragem
-    #t5 sera o 'q' e t6 sera o 'k'
-    #temos que encontrar quais pixels da matriz serao utilizados -> Matriz[i + k - 1][j+q-1] (guardar resultado em s6)
-    li t5, 0    #q
-    li t6, 0    #k
-    li s6, 0    #valor resultado das somas (pixel final)
-
+    #temos que encontrar quais pixels da matriz serao utilizados -> Matriz[i + k - 1][j+q-1] -> t4 = [i + k - 1] * (numero de colunas) + [j+q-1]
+    #t1 = y t3 = x || t0 = i, t2 = j
+    li t4, 0 #armazenara o offset do inicio da matriz
+    li a5, 0 #armazenara a soma dos valores
     #para k = 0 q = 0
-    
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 0  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 0 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+    #------------------------------------------------------------------------------------------------------------------------------
 
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 0 q = 1
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 0  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 1 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+    #------------------------------------------------------------------------------------------------------------------------------
 
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 0 q = 2
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 0  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 2 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+    #------------------------------------------------------------------------------------------------------------------------------
 
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 1 q = 0
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 1  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 0 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+    #------------------------------------------------------------------------------------------------------------------------------
+
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 1 q = 1
+    li a4, 8   #valor de w[k][q] em a4
+    addi t4, t0, 1  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 1 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+#------------------------------------------------------------------------------------------------------------------------------
+
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 1 q = 2
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 1  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 2 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+#------------------------------------------------------------------------------------------------------------------------------
+
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 2 q = 0
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 2  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 0 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+#------------------------------------------------------------------------------------------------------------------------------
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 2 q = 1
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 2  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 1 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+#------------------------------------------------------------------------------------------------------------------------------
+
+    li t4, 0 #armazenara o valor da matriz
+    #para k = 2 q = 2
+    li a4, -1   #valor de w[k][q] em a4
+    addi t4, t0, 2  #t4 = i + k
+    addi t4, t4, -1 #t4 = i + k - 1
+    mul t4, t4, t3  #t4 =  (i + k - 1) * x         x = numero de colunas
+    add t4, t4, t2 #t4 =  ((i + k - 1) * x) + j
+    addi t4, t4, 2 #t4 =  ((i + k - 1) * x) + j + q
+    addi t4, t4, -1 #t4 =  ((i + k - 1) * x) + j + q -1
+    add s5, a3, t4 #guarda o endereco do pixel da vez em s5
+    lbu s6, 0(s5) #s6 = Guarda o pixel
+    mul s6, s6, a4 #s6 = Matriz[i + k - 1][j+q-1] * w[k][q]
+    add a5, s6, a5
+
+    #a5 armazena o valor do pixel
 
     #arrumar pixel
-    slli s7, s6, 24 #s7 = R
-    slli s8, s6, 16 #s8 = G
-    slli s9, s6, 8 #s9 = B
-    li s6, 255 #s6 = alpha 
+    slli s7, a5, 24 #s7 = R
+    slli s8, a5, 16 #s8 = G
+    slli s9, a5, 8 #s9 = B
+    li a5, 255 #s6 = alpha 
     li a2, 0 #a2 armazenara o resultado (cor do pixel)
     or a2, s7, a2
     or a2, s8, a2
     or a2, s9, a2
-    or a2, s6, a2
+    or a2, a5, a2
     j setar_pixel
     
     borda:
