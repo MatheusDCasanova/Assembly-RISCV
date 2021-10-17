@@ -337,6 +337,7 @@ exibir_imagem: #inicio da matriz em a2
     
     setar_pixel_0:
     li a5, 0
+    j manipular_pixel
 
 
     setar_pixel_255:
@@ -362,7 +363,6 @@ exibir_imagem: #inicio da matriz em a2
     setar_pixel:
     jal setPixel
 
-    addi t4, t4, 1 #atualiza a posicao da matriz q esta pegando
     addi t2, t2, 1 #atualiza o j (x)
     j for_j
     final_for_j:
