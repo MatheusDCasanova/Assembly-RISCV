@@ -327,7 +327,23 @@ exibir_imagem: #inicio da matriz em a2
     add a5, s6, a5
 
     #a5 armazena o valor do pixel
+    #verificar se eh negativo ou maior que 255
+    li t4, 0
+    blt a5, t4, setar_pixel_0 # if a5 < 0 then target
+    li t4, 255
+    bgt a5, t4, setar_pixel_255 # if a5 > 255 then target
+    
+    j manipular_pixel
+    
+    setar_pixel_0:
+    li a5, 0
 
+
+    setar_pixel_255:
+    li a5, 255
+
+
+    manipular_pixel:
     #arrumar pixel
     slli s7, a5, 24 #s7 = R
     slli s8, a5, 16 #s8 = G
@@ -357,6 +373,8 @@ exibir_imagem: #inicio da matriz em a2
     final_for_i:
     mv ra, s11
     ret
+
+
 
 
 
