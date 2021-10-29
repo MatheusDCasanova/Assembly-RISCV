@@ -11,7 +11,7 @@ calcular_tamanho_string:#a0 = endereco da string
     li t4, 0 #contador de algarismos
     while:
     beq t1, t2, contou # se o byte carregado for \0, para o loop
-    beq t1, 45, pular sinal; # se for sinal de negativo pulo sem adicionar na contagem
+    beq t1, t3, pular_sinal; # se for sinal de negativo pulo sem adicionar na contagem
     addi t0, t0, 1
     addi t4, t4, 1
     add t1, t0, a0 #endereco do proximo algarismo em t1
