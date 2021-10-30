@@ -70,10 +70,9 @@ gets:#a0: endereco da string
   lb t0, 0(a1)
   li t1, '\n' #condicao de parada
   li t3, 0
-  li t2, 0
+  li t2, 1
   while3:
   beq t0, t1, fim_get # if t1 == \n then fim_get
-  addi t2, t2, 1
   add a1, a1, t2
   li a0, 0
   jal read
