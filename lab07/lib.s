@@ -227,6 +227,9 @@ itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
 
 
   encerrar:
+  li t0, 0
+  add t5, a3, t4
+  sb t0, 0(t5) # 
   addi sp, sp, 48
   mv a0, a1
   ret
