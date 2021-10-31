@@ -1,5 +1,6 @@
 .globl puts, gets, atoi, itoa, time, sleep, approx_sqrt, getPosition, imageFilter, exit
-
+.data
+#buffer: .skip 100
 
 .text
 write:
@@ -18,7 +19,6 @@ read:
     ecall
     ret
 
-
 puts: #a0: endereco da string
   addi sp, sp, -16
   sw ra, 0(sp)
@@ -36,10 +36,9 @@ puts: #a0: endereco da string
   li a2, 1
   li a0, 1
   jal write
-
   lw ra, 0(sp)  #recupera ra
   addi sp, sp, 16 #desaloca a pilha
-  li a0, 0
+  li a0, 1
   ret
 
 calcular_tamanho_string:
@@ -62,6 +61,7 @@ calcular_tamanho_string:
 gets:#a0: endereco da string
   addi sp, sp, -16
   sw ra, 0(sp)
+  sw a0, 4(sp)
   #parametros do read
   mv a1, a0
   li a2, 1
@@ -69,19 +69,24 @@ gets:#a0: endereco da string
   jal read
   lb t0, 0(a1)
   li t1, '\n' #condicao de parada
-  li t3, 0
   li t2, 1
+  li t4, 0
   while3:
-  beq t0, t1, fim_get # if t1 == \n then fim_get
+  beq t0, t1, fim_get # if t0 == \n then fim_get
+  #beq t0, t4, fim_get # if t0 == \0 then fim_get
   add a1, a1, t2
   li a0, 0
+  li a2, 1
   jal read
   li a0, 0
   lb t0, 0(a1)
   j while3
   fim_get:
+  li t3, 0  #adicionar o \0 no final
   sb t3, 0(a1)
   lw ra, 0(sp)
+  lw a0, 4(sp)
+  addi sp, sp, 16
   ret
 
 calcular_tamanho_numero:#a0 = endereco da numero
@@ -111,19 +116,16 @@ calcular_tamanho_numero:#a0 = endereco da numero
     mv a0, t4 #t4 = numero de algarismos -> a0
     ret
 
-
-
-
-atoi:#a0: endereco da numero
+atoi:#a0: endereco do buffer
     addi sp, sp, -16
     sw ra, 0(sp)
     sw a0, 4(sp)
-
+    a:
     jal calcular_tamanho_numero
     mv t0, a0 #numero de algarismos
     addi t1, t0, -1 #t1 = potencia de 10 do maior algarismo
     lw a0, 4(sp) #recuperar o endereco da numero
-
+    d:
     li t2, 0 #i
     li t3, 1
     li t4, 10
@@ -138,7 +140,8 @@ atoi:#a0: endereco da numero
     li t2, 0 #condicao de parada
     li t4, 45 #verificador do sinal
     li t5, 0 #guardara o resultado final
-    lbu t0, 0(a0)
+    lb t0, 0(a0)
+    c:
     li t6, 1
     li a2, 10
     while2: #enquanto algarismo != \0 (ascii 0) continuar
@@ -163,21 +166,76 @@ atoi:#a0: endereco da numero
     lw ra, 0(sp)
     addi sp, sp, 16
     mv a0, t5
+    b:
     ret
 
 
-itoa:
-ret
+itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
+  #verificar se o numero eh menor que zero
+  mv a3, a1
+  addi sp, sp, -48
+  li t0, 10
+  li t2, 0
+  bne a2, t0, cont # if base != 10 considerar diretamente unsigned
+  
+  verificar_sinal_base_10:
+  li t0, 0
+  bge a0, t0, cont # if numero_base_10 >= 0 then considerar sem sinal
+  li t0, -1
+  mul a0, t0, a0
+  li t2, 45
 
+  #algoritmo
+  #Para cada algarismo
+  #Guarda o resto da divisao do numero por 10
+  #soma 48 nesse resto pra transformar em string
+  #divide o numero por 10
+  cont:
+  li t0, 0
+  li t1, 0
+  while_itoa:
+  beq a0, t0, endereco_ultimo_caractere_guardado # if x==0 terminou de transformar em string
+  remu t4, a0, a2 #t4 = x % base
+  addi t4, t4, 48 #transformar em caractere
+  divu a0, a0, a2 # x = x / base
+  add t5, sp, t1 #local de armazenamento = sp + t1
+  sb t4, 0(t5)
+  addi t1, t1, 1  #atualiza o contador
+  j while_itoa
+
+  endereco_ultimo_caractere_guardado:
+  li t6, 45
+  li t4, 0  #contador de inicio para transferencia
+  bne t2, t6, transf_from_stack_to_string #se o numero nao for um base 10 negativo
+  #se for um base 10 negativo
+  sb t2, 0(a3) #coloca o sinal de negativo 
+  li t4, 1  #comeco a contar dps do primeiro byte
+  
+  transf_from_stack_to_string:
+  addi t1, t1, -1 
+  add t5, sp, t1  #endereco do ultimo caractere guardado na pilha pelo algoritmo
+  li t2, 0  #condicao
+  while_transfer:
+  blt t1, t2, encerrar # if t1 < 0 transferiu para o endereco
+  lb t3, 0(t5)  #carrega o caractere em t3
+  add t5, a3, t4  #carrega o endereco de armazenamento do byte
+  sb t3, 0(t5) #guardo o byte
+  addi t4, t4, 1  #atualizo o contador do endereco
+  addi t1, t1, -1
+  add t5, sp, t1  #atualizo o endereco da pilha
+  j while_transfer
+
+
+  encerrar:
+  addi sp, sp, 48
+  mv a0, a1
+  ret
 
 time:
 ret
 
 sleep:
 ret
-
-
-
 
 approx_sqrt: #parametro : y = a0 e n_iteraoes = a1
   #estimativa inicial: k = y / 2 -> k = t2
@@ -204,6 +262,19 @@ ret
 
 imageFilter:
 ret
+
+# s_start:
+#   la a0, buffer
+#   jal gets
+#   la a0, buffer
+#   jal atoi
+#   mv s0, a0
+#   la a0, buffer
+#   jal puts
+#   la a0, buffer
+#   jal gets
+#   la a0, buffer
+#   jal puts
 
 exit: 
     li a0, 0

@@ -1,7 +1,11 @@
-all : biblioteca.x
+main.x: exemplo.o lib.o
+	ld.lld-10 exemplo.o lib.o -o main.x
 
-biblioteca.o : biblioteca.s
-	clang-10 --target=riscv32 -march=rv32g -mabi=ilp32d -mno-relax biblioteca.s -c -o biblioteca.o
+exemplo.s: exemplo.c
+	clang-10 --target=riscv32 -march=rv32g -mabi=ilp32d -mno-relax exemplo.c -S -o exemplo.s
 
-biblioteca.x : biblioteca.o
-	ld.lld-10 biblioteca.o -o biblioteca.x
+exemplo.o: exemplo.s
+	clang-10 --target=riscv32 -march=rv32g -mabi=ilp32d -mno-relax exemplo.s -c -o exemplo.o
+
+lib.o: lib.s
+	clang-10 --target=riscv32 -march=rv32g -mabi=ilp32d -mno-relax lib.s -c -o lib.o
