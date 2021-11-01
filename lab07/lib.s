@@ -236,7 +236,7 @@ itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
 
 
 
-time: 
+time:
   addi sp, sp, -32
   sw ra, 28(sp)
   mv a0, sp
@@ -255,7 +255,24 @@ time:
   ret
 
 sleep:
-ret
+  addi sp, sp, -32
+  sw ra, 0(sp)
+  sw a0, 4(sp)
+  jal time  #tempo inicial em milissegundos em a0
+  mv a1, a0 #move o tempo inicial para a1
+  lw a0, 4(sp)  #tempo de espera em a0
+  sw s0, 8(sp)
+  add s0, a1, a0  #tempo inicial mais espera desejada
+  jal time
+  wait_for_time:  #executar enquanto time !=  tempo incial mais espera desejada
+  beq a0, s0, sleepou # if t0 == t1 then sleepou
+  jal time
+  j wait_for_time
+  
+  sleepou:
+  lw ra, 0(sp)
+  lw s0, 8(sp)
+  ret
 
 approx_sqrt: #parametro : y = a0 e n_iteraoes = a1
   #estimativa inicial: k = y / 2 -> k = t2
