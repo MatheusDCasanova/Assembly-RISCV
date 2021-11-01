@@ -120,12 +120,10 @@ atoi:#a0: endereco do buffer
     addi sp, sp, -16
     sw ra, 0(sp)
     sw a0, 4(sp)
-    a:
     jal calcular_tamanho_numero
     mv t0, a0 #numero de algarismos
     addi t1, t0, -1 #t1 = potencia de 10 do maior algarismo
     lw a0, 4(sp) #recuperar o endereco da numero
-    d:
     li t2, 0 #i
     li t3, 1
     li t4, 10
@@ -141,7 +139,6 @@ atoi:#a0: endereco do buffer
     li t4, 45 #verificador do sinal
     li t5, 0 #guardara o resultado final
     lb t0, 0(a0)
-    c:
     li t6, 1
     li a2, 10
     while2: #enquanto algarismo != \0 (ascii 0) continuar
@@ -166,7 +163,6 @@ atoi:#a0: endereco do buffer
     lw ra, 0(sp)
     addi sp, sp, 16
     mv a0, t5
-    b:
     ret
 
 
@@ -238,8 +234,25 @@ itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
   mv a0, a1
   ret
 
-time:
-ret
+
+
+time: 
+  addi sp, sp, -32
+  sw ra, 28(sp)
+  mv a0, sp
+  li a1, 0
+  li a7, 169 # chamada de sistema gettimeofday
+  ecall
+  mv a0, sp 
+  lw t1, 0(a0) # tempo em segundos
+  lw t2, 8(a0) # fração do tempo em microssegundos
+  li t3, 1000
+  mul t1, t1, t3
+  div t2, t2, t3
+  add a0, t2, t1
+  lw ra, 28(sp)
+  addi sp, sp, 32
+  ret
 
 sleep:
 ret
