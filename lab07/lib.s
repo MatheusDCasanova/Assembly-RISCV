@@ -294,24 +294,120 @@ approx_sqrt: #parametro : y = a0 e n_iteraoes = a1
   ret 
 
 
-getPosition:
-ret
+
+getPosition: #a0: endereco de x, a1: endereco de y, a2: Yb, a3: Xc, a4: Ta, a5: Tb, a6: Tc, a7, Tr
+  addi sp, sp, -48
+  sw ra, 0(sp)
+  sw s0, 4(sp)
+  sw s1, 8(sp)
+  sw s2, 12(sp)
+  sw s3, 16(sp)
+  sw s4, 20(sp)
+  sw s11, 24(sp)
+  sw a0, 28(sp)
+  sw a1, 32(sp)
+
+  #da:
+  mv a0, a7 #a0 = Tr
+  mv a1, a4
+  jal calcular_distancia  #da em a0
+  mv s0, a0
+  #db:
+  mv a0, a7
+  mv a1, a5
+  jal calcular_distancia  #db em a0
+  mv s1, a0
+  #dc:
+  mv a0, a7
+  mv a1, a6
+  jal calcular_distancia  #dc em a0
+  mv s2, a0
+
+  mv s3, a2 #s3 = Yb
+  mv s4, a3 #s4 = Xc
+
+  #Algoritmo
+  mul s0, s0, s0 #elevar da ao quadrado
+  mv t0, s3 #t0 = Yb
+  mul s3, s3, s3 #elevar Yb ao quadrado
+  mul s1, s1, s1 #elevar db ao quadrado
+
+  #y = (da²+Yb²-db²)/2Yb
+  add t1, s0, s3 #t1 = da² + Yb²
+  sub t1, t1, s1 #t1 = da² + Yb² - db²
+
+  li t6, 2 #carrega t6 com 2
+  mul t2, t0, t6 #t2 = Yb * 2
+
+  div a1, t1, t2 #y = (da² + Yb² - db²)/Yb * 2
+  #GUARDAR O Y NO ENDERECO DESEJADO
+  lw t6, 32(sp) #endereco de y em t6
+  sw a1, 0(t6)
+
+  CALCULO_DO_X:
+  mul t3, a1, a1 #t3 = y²
+  sub a0, s0, t3 #a0 = (da²-y²)
+  li a1, 20
+  sw t3, 36(sp)
+  jal approx_sqrt #a0 = sqrt(da²-y²)
+  lw t3, 36(sp)
+  mv s11, a0 #x = sqrt(da²-y²)
+  li t1, -1
+  mul s11, s11, t1 #s11 = -sqrt(da²-y²)
+  
+  #agora, devemos verificar se a0 ou se s11 se aproxima mais do resultado
+  #(x - Xc)² + y² = dc²
+  #Primeiro para a0
+  sub t2, a0, s4 #t2 = x1 - Xc
+  mul t2, t2, t2 #t2 = (x1 - Xc)²
+  add t2, t3, t2 # t2 = (x1 - Xc)²+y²
+  mul s2, s2, s2 #s2 = dc²
+  sub t2, t2, s2 #t2 = (x1 - Xc)²+y² - dc²
+  bge t2, zero, calculeix1
+  mul t2, t1, t2
+  calculeix1:
+
+  #Segundo para s11
+  sub t4, s11, s4 #t4 = x2 - Xc
+  mul t4, t4, t4 #t4 = (x2 - Xc)²
+  add t4, t3, t4 #t4 =(x2 - Xc)²+y²
+  sub t4, t4, s2 # t4 = (x2 - Xc)²+y² - dc²
+  bge t4, zero, aqui
+  mul t4, t1, t4
+
+  aqui:
+  blt t2, t4, retornar_coordendas # if t2 < t4 then target
+  #se t2 > t4
+  mv a0, s11
+  
+  retornar_coordendas:
+  lw t6, 28(sp)
+  sw a0, 0(t6)  #GUARDAR O X FINAL NO ENDERECO DESEJADO
+  a:
+  lw ra, 0(sp)
+  lw s0, 4(sp)
+  lw s1, 8(sp)
+  lw s2, 12(sp)
+  lw s3, 16(sp)
+  lw s4, 20(sp)
+  lw s11, 24(sp)
+  addi sp, sp, 48
+  ret
+
+
+calcular_distancia: #T1 em a0, T2 em a1
+  #deltaT = T1 - T2  -> registrador t0
+  sub t0, a0, a1
+  #multiplicar por 3 e dividir por 10 ( delta t * v )
+  li t1, 10
+  li t3, 3
+  mul t0, t0, t3 #multiplica por 3
+  divu t0, t0, t1 #divide por 10
+  mv a0, t0 #devolve a distancia em a0
+  ret 
 
 imageFilter:
 ret
-
-# s_start:
-#   la a0, buffer
-#   jal gets
-#   la a0, buffer
-#   jal atoi
-#   mv s0, a0
-#   la a0, buffer
-#   jal puts
-#   la a0, buffer
-#   jal gets
-#   la a0, buffer
-#   jal puts
 
 exit: 
     li a0, 0
