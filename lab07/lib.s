@@ -193,9 +193,13 @@ itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
   cont:
   li t0, 0
   li t1, 0
+  li a6, 10
   while_itoa:
   beq a0, t0, endereco_ultimo_caractere_guardado # if x==0 terminou de transformar em string
   remu t4, a0, a2 #t4 = x % base
+  blt t4, a6, pular_soma_caractere # if numero < 10 then target
+  addi t4, t4, 39
+  pular_soma_caractere:
   addi t4, t4, 48 #transformar em caractere
   divu a0, a0, a2 # x = x / base
   add t5, sp, t1 #local de armazenamento = sp + t1
