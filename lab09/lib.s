@@ -46,7 +46,7 @@ _start:
 
 
 play_note:  #a0 = int ch, a1 = int inst, a2 = int note, a3 = int vel, a4 = int dur
-    la t0, 0xFFFF0300
+    li t0, 0xFFFF0300
     #definir o instrumento
     addi t1, t0, 2
     sh a1, 0(t1)
@@ -65,7 +65,6 @@ play_note:  #a0 = int ch, a1 = int inst, a2 = int note, a3 = int vel, a4 = int d
 
     #definir canal de reproducao
     sb a0, 0(t0)
-
     ret
 
 main_ISR:
@@ -93,7 +92,7 @@ main_ISR:
     lw t2, 8(sp)
     addi sp, sp, 16
     csrrw sp, mscratch, sp # Troca sp com mscratch
-    ret
+    mret
 
 
 
