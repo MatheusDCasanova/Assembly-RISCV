@@ -50,12 +50,12 @@ Syscall_read_sensors: #a0: endereço de um vetor de 256 elementos que armazenar�
 Syscall_get_position: #a0: endereço posição x #a1: endereço posição y #a2: endereço posição z
   li t0, 0xFFFF0100
   li t1, 1
-  sb t1, t0 #inicia leitura do gps
-  lb t1, t0 #t1 eh o verificador do termino de leitura
+  sb t1, 0(t0) #inicia leitura do gps
+  lb t1, 0(t0) #t1 eh o verificador do termino de leitura
   li t2, 0  #terminou leitura
   aguardar_leitura_gps:
   beq t1, t2, terminou_leitura
-  lb t1, t0
+  lb t1, 0(t0)
   j aguardar_leitura_gps
   terminou_leitura:
   lw t1, 0x10(t0)    #X da leitura
@@ -87,17 +87,17 @@ int_handler:
   beq a7, t1, Syscall_get_position
 
   syscall_realizada:
+  csrr t0, mepc  # carrega endereço de retorno (endereço da instrução que invocou a syscall)
+  addi t0, t0, 4 # soma 4 no endereço de retorno (para retornar após a ecall) 
+  csrw mepc, t0  # armazena endereço de retorno de volta no mepc
   lw t0, 0(sp)
   lw t1, 4(sp)
   lw t2, 8(sp)
   lw ra, 12(sp)
   addi sp, sp, 32 
   csrrw sp, mscratch, sp
-
-  csrr t0, mepc  # carrega endereço de retorno (endereço da instrução que invocou a syscall)
-  addi t0, t0, 4 # soma 4 no endereço de retorno (para retornar após a ecall) 
-  csrw mepc, t0  # armazena endereço de retorno de volta no mepc
   mret           # Recuperar o restante do contexto (pc <- mepc)
+  
   
 
 
@@ -135,9 +135,7 @@ _start:
 .globl logica_controle
 logica_controle:
   # implemente aqui sua lógica de controle, utilizando apenas as syscalls definidas.
-    addi sp, sp, -32
-
-
+    addi sp, sp, -16
 
     li a0, 1
     li a1, 0
@@ -149,24 +147,22 @@ logica_controle:
     la a2, z
     li a7, 15
     ecall
-
-    lw a0, 0(a0)   #X value   
-    lw a1, 0(a1)   #Y value  
-    lw a2, 0(a2)   #Z value  
+    lw a0, x   #X value   
+    lw a1, y   #Y value  
+    lw a2, z   #Z value  
     
-    li t0, -77
+    li t0, -75
     step1:  #enquanto Z nao for -77
-    bge a2, t0, mudar_direcao # if Z >= -77 then target
 
+    bge a2, t0, mudar_direcao # if Z >= -75 then target
     la a0, x
     la a1, y
     la a2, z
     li a7, 15
     ecall   #call GPS
-    lw a0, 0(a0)   #X value   
-    lw a1, 0(a1)   #Y value  
-    lw a2, 0(a2)   #Z value
-
+    lw a0, x  
+    lw a1, y
+    lw a2, z
     j step1
 
     mudar_direcao:
@@ -175,5 +171,48 @@ logica_controle:
     li a7, 10
     ecall   #alterar o angulo
 
+    la a0, x 
+    la a1, y
+    la a2, z
+    li a7, 15
+    ecall
+    lw a0, x   #X value   
+    lw a1, y   #Y value  
+    lw a2, z   #Z value 
 
+    li t0, 125
+    li t1, 140
+    step2:
+    blt a0, t0, zerar_direcao
+    la a0, x
+    la a1, y
+    la a2, z
+    li a7, 15
+    ecall   #call GPS
+    lw a0, x  
+    lw a1, y
+    lw a2, z
+
+    blt a0, t1, desligar_motor_precoce
+    checkpoint:
+    j step2
+
+    desligar_motor_precoce:
+    sw a0, 0(sp)
+    li a0, 0
+    li a1,-34
+    li a7, 10
+    ecall
+    lw a0, 0(sp)
+    j checkpoint
+
+    zerar_direcao:
+    li a0, 0
+    li a1, 0
+    li a7, 10
+    ecall
+
+    li a0, 1
+    li a7, 11
+    ecall
     ret

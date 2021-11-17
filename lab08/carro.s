@@ -27,7 +27,7 @@ _start:
     li s1, 0
     sb t4, 0(a2)
     while:
-    bge a1, s0, mudar_direcao # if Z >= -50 then freiar
+    bge a1, s0, mudar_direcao # if Z >= -77 then freiar
     sb t4, 0(t0)    #ativa o gps
     lb a1, 0(t0)
     while_espera2:
