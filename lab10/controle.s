@@ -215,4 +215,5 @@ logica_controle:
     li a0, 1
     li a7, 11
     ecall
+
     ret
