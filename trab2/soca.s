@@ -140,26 +140,87 @@ Syscall_read: #a0: file descriptor #a1: buffer #a2: size
   lb t1, 0x02(t0)
   j while_reading
   terminou_reading:
-
-
+  lb t5, 0x03(t0)
   li t2, 0  #terminou leitura com \0
   li t3, 10 #terminou leitura com 10
   li t4, 0  #contador de caracteres
+
   while_ler:
-  beq t5, t1, terminou_ler# if byte lido == \n then target
-  beq t5, t1 
-  li t1, 1
-  sb t1, 0x02(t0)   #inicia a leitura do byte na stdin
-  lb t1, 0(t0) #t1 eh o verificador do termino de leitura
-
-
-
+    beq t5, t2, terminou_ler    # if byte lido == \n then target
+    beq t5, t3, terminou_ler    # if byte lido == 0 then target
+    add t6, t4, a1  #endereco armazenamento + offset
+    sb t5, 0(t6)    #guarda o caractere
+    addi t4, t4, 1  #leu um caractere
+    li t1, 1
+    sb t1, 0x02(t0)   #inicia a leitura do byte na stdin
+    lb t1, 0(t0) #t1 eh o verificador do termino de leitura
+    while_reading_interno:
+    beq t1, t2, terminou_reading_interno # if terminou leitura
+    lb t1, 0x02(t0)
+    j while_reading_interno
+    terminou_reading_interno:
+    lb t5, 0x03(t0)
+    j while_ler
   terminou_ler:
 
-
+  mv a0, t4
+  j syscall_realizada
 
 #---------------------------------------------
-Syscall_draw_line:
+Syscall_write:  #a1 endereco do buffer #a2 tamanho
+  li t0, 0xFFFF0500 #serial port memory adress
+  li t1, 0  #i
+  for_escrita:
+  bge t1, a2, fim_escrita # if i >= tamanho then terminou
+  add t2, t1, a1    #endereco buffer + offeset do byte
+  lb t2, 0(t2)  #carrega o byte
+  sb t2, 0x01(t0)   #guarda o byte
+  li t2, 1
+  sb t2, 0(t0)  #triggers writing
+  lb t2, 0(t0)
+  li t3, 0
+  esperar_escrita:
+  beq t2, t3, esperou_escrita # if t2 = 0
+  lb t2, 0(t0)
+  j esperar_escrita
+  esperou_escrita:
+  addi t1, t1, 1    #incremento i
+  j for_escrita
+  fim_escrita:
+  j syscall_realizada
+#---------------------------------------------
+
+
+Syscall_draw_line:#a0 endereco array 256 bytes
+  li t0, 0xFFFF0700
+  li t1, 0 #i
+  li t2, 256
+  for_copiar_linha:
+  bge t1, t2, fim_copiar_linha
+  add t3, t1, a0    #endereco array + offset
+  lb t3, 0(t3)  #carrega o byte
+  add t4, t0, t1
+  addi t4, t4, 0x08 #endereco pixels + offset
+  sb t3, 0(t4)
+  addi t1, t1, 1
+  j for_copiar_linha
+  fim_copiar_linha:
+  li t1, 256
+  sh t1, 0x02(t0)   #array size
+  li t1, 0
+  sw t1, 0x04(t0)   #initial position
+  li t1, 1
+  sb t1, 0(t0)      #triggers drawing
+  lb t1, 0(t0)
+  li t2, 0
+  esperar_desenhar:
+  beq t1, t2, desenhou # if t0 == t1 then target
+  lb t1, 0(t0)
+  j esperar_desenhar
+  desenhou:
+  
+  j syscall_realizada
+  
 
 
 
