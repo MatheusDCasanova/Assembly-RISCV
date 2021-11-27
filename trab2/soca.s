@@ -1,7 +1,8 @@
+.globl _start
 .bss
 .align 4
 isr_stack: # Final da pilha das ISRs
-.skip 1024 # Aloca 1024 bytes para a pilha
+.skip 2048 # Aloca 1024 bytes para a pilha
 topo_stack_isr:
 
 /*user_stack:
@@ -14,7 +15,7 @@ top_user_stack:
 .text
 .align 4
 
-Syscall_set_engine_and_steering: #a0 sentido do deslocamento, #a1 angulo
+Syscall_set_motor: #a0 sentido do deslocamento, #a1 angulo
   li t0, -127
   blt a1, t0, parametro_invalido
   li t0, 127
@@ -46,7 +47,7 @@ Syscall_set_handbreak:
 Syscall_read_sensors: #a0: endereço de um vetor de 256 elementos que armazenará os valores lidos do sensor de luminosidade
   li t0, 0xFFFF0300
   li t1, 1
-  sb t1, 0x01()
+  sb t1, 0x01(t0)
   lb t1, 0x01(t0) #t1 eh o verificador do termino de leitura
   li t2, 0  #terminou leitura
   aguardar_leitura_sensor:
@@ -118,7 +119,7 @@ Syscall_get_rotation: #a0: valor do em x. a1: valor do ângulo em y a2: valor do
   aguardar_leitura_rotation:
   beq t1, t2, terminou_rotation
   lb t1, 0(t0)
-  j aguardar_rotation_rotation
+  j aguardar_leitura_rotation
   terminou_rotation:
   lw t1, 0x04(t0)    #X da leitura
   sw t1, 0(a0) #guarda X
@@ -131,26 +132,10 @@ Syscall_get_rotation: #a0: valor do em x. a1: valor do ângulo em y a2: valor do
 #---------------------------------------------
 Syscall_read: #a0: file descriptor #a1: buffer #a2: size
   li t0, 0xFFFF0500 #serial port memory adress
-  li t1, 1
-  sb t1, 0x02(t0)   #inicia a leitura do byte na stdin
-  lb t1, 0x02(t0) #t1 eh o verificador do termino de leitura
+  li t3, 0
   li t2, 0
-  while_reading:
-  beq t1, t2, terminou_reading # if t1 == t0 then leu o byte
-  lb t1, 0x02(t0)
-  j while_reading
-  terminou_reading:
-  lb t5, 0x03(t0)
-  li t2, 0  #terminou leitura com \0
-  li t3, 10 #terminou leitura com 10
-  li t4, 0  #contador de caracteres
-
   while_ler:
-    beq t5, t2, terminou_ler    # if byte lido == \n then target
-    beq t5, t3, terminou_ler    # if byte lido == 0 then target
-    add t6, t4, a1  #endereco armazenamento + offset
-    sb t5, 0(t6)    #guarda o caractere
-    addi t4, t4, 1  #leu um caractere
+    bge t3, a2, terminou_ler     
     li t1, 1
     sb t1, 0x02(t0)   #inicia a leitura do byte na stdin
     lb t1, 0(t0) #t1 eh o verificador do termino de leitura
@@ -159,11 +144,13 @@ Syscall_read: #a0: file descriptor #a1: buffer #a2: size
     lb t1, 0x02(t0)
     j while_reading_interno
     terminou_reading_interno:
-    lb t5, 0x03(t0)
+    lb t5, 0x03(t0) #carrega o caractere
+    add t6, t3, a1  #endereco armazenamento do caractere + offset
+    sb t5, 0(t6)    #guarda o caractere
+    addi t3, t3, 1  #leu um caractere
     j while_ler
   terminou_ler:
-
-  mv a0, t4
+  mv a0, t3
   j syscall_realizada
 
 #---------------------------------------------
@@ -221,29 +208,24 @@ Syscall_draw_line:#a0 endereco array 256 bytes
   
   j syscall_realizada
   
-
-
-
-
-
-
-
 #---------------------------------------------
 int_handler:
   ###### Tratador de interrupções e syscalls ######  
   # <= Implemente o tratamento da sua syscall aqui
 
   csrrw sp, mscratch, sp # Troca sp com mscratch
-  addi sp, sp, -32 # Aloca espaço na pilha da ISR
+  addi sp, sp, -48 # Aloca espaço na pilha da ISR
   sw t0, 0(sp)
   sw t1, 4(sp)
   sw t2, 8(sp)
   sw t3, 12(sp)
   sw t4, 16(sp)
-  sw ra, 20(sp)
+  sw t5, 20(sp)
+  sw t6, 24(sp)
+  sw ra, 28(sp)
 
   li t1, 10
-  beq a7, t1, Syscall_set_engine_and_steering
+  beq a7, t1, Syscall_set_motor
   li t1, 11
   beq a7, t1, Syscall_set_handbreak
   li t1, 12
@@ -260,7 +242,6 @@ int_handler:
   beq a7, t1, Syscall_write
   li t1, 19
   beq a7, t1, Syscall_draw_line
-  
 
   syscall_realizada:
   csrr t0, mepc  # carrega endereço de retorno (endereço da instrução que invocou a syscall)
@@ -271,18 +252,18 @@ int_handler:
   lw t2, 8(sp)
   lw t3, 12(sp)
   lw t4, 16(sp)
-  lw ra, 20(sp)
-  addi sp, sp, 32 
+  lw t5, 20(sp)
+  lw t6, 24(sp)
+  lw ra, 28(sp)
+  addi sp, sp, 48 
   csrrw sp, mscratch, sp
   mret           # Recuperar o restante do contexto (pc <- mepc)
 
-
-.globl _start
+#---------------------------------------------------------------------
 _start:
   la t0, int_handler  # Carregar o endereço da rotina que tratará as interrupções
   csrw mtvec, t0      # (e syscalls) no registrador MTVEC para configurar
                       # o vetor de interrupções.
-
 # Escreva aqui o código para mudar para modo de usuário e chamar a função user_main (definida em outro arquivo).
 # Lembre-se de inicializar a pilha do usuário para que seu programa possa utilizá-la.
 
