@@ -1,9 +1,11 @@
-.globl _start
+.globl _start, _system_time
 .bss
 .align 4
 isr_stack: # Final da pilha das ISRs
 .skip 2048 # Aloca 1024 bytes para a pilha
 topo_stack_isr:
+
+_system_time: .skip 4
 
 /*user_stack:
 .skip 2048
@@ -39,9 +41,19 @@ Syscall_set_motor: #a0 sentido do deslocamento, #a1 angulo
   li a0, -1
   j syscall_realizada
 #---------------------------------------------
-Syscall_set_handbreak:
+Syscall_set_handbreak:  #a0 deve conter 1 ou 0
+  li t0, 0
+  beq t0, a0, valido # if a0 = 0 then target
+  li t0, 1
+  beq t0, a0, valido # if t0 == t1 then target
+  #se for invalido, retornar -1
+  li a0, -1
+  j syscall_realizada
+  
+  valido:
   li t0, 0xFFFF0300
   sb a0, 0x22(t0)
+  li a0, 0
   j syscall_realizada
 #---------------------------------------------
 Syscall_read_sensors: #a0: endereço de um vetor de 256 elementos que armazenará os valores lidos do sensor de luminosidade
@@ -138,7 +150,7 @@ Syscall_read: #a0: file descriptor #a1: buffer #a2: size
     bge t3, a2, terminou_ler     
     li t1, 1
     sb t1, 0x02(t0)   #inicia a leitura do byte na stdin
-    lb t1, 0(t0) #t1 eh o verificador do termino de leitura
+    lb t1, 0x02(t0) #t1 eh o verificador do termino de leitura
     while_reading_interno:
     beq t1, t2, terminou_reading_interno # if terminou leitura
     lb t1, 0x02(t0)
@@ -224,6 +236,11 @@ int_handler:
   sw t6, 24(sp)
   sw ra, 28(sp)
 
+  csrr t0, mcause #read the cause of the interupt
+  andi t0, t0, 0x3f #isolates the EXCCODE
+  li   t1, 11
+  beq  t0, t1, GPT
+
   li t1, 10
   beq a7, t1, Syscall_set_motor
   li t1, 11
@@ -243,6 +260,21 @@ int_handler:
   li t1, 19
   beq a7, t1, Syscall_draw_line
 
+  GPT:
+  #Atualizar _system_time
+  la t0, _system_time
+  lw t1, 0(t0)
+  li t2, 100
+  add t1, t1, t2
+  sw t1, 0(t0)
+
+  #Programar para gerar interrupação daqui 100ms
+  li t0, 0xFFFF0100   
+  addi t0, t0, 8
+  li t1, 100
+  sw t1, 0(t0)
+
+  
   syscall_realizada:
   csrr t0, mepc  # carrega endereço de retorno (endereço da instrução que invocou a syscall)
   addi t0, t0, 4 # soma 4 no endereço de retorno (para retornar após a ecall) 
@@ -279,6 +311,15 @@ _start:
   li t2, 0x800 # do registrador mie
   or t1, t1, t2
   csrw mie, t1
+
+  la t0, _system_time
+  li t1, 0
+  sw t1, 0(t0)
+
+  li t0, 0xFFFF0100   #base GPT
+  addi t0, t0, 8
+  li t1, 100
+  sw t1, 0(t0)
 
   csrr t1, mstatus # Update the mstatus.MPP
   li t2, ~0x1800 # field (bits 11 and 12)
