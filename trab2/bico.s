@@ -118,7 +118,8 @@ get_rotation:
 */
 
 get_time:
-    lw a0, _system_time
+    la a0, _system_time
+    lw a0, 0(a0)
     ret
 
 /******************************************************************************/
@@ -133,10 +134,86 @@ get_time:
   Retorna:
     Nada
 */
+filter_1d_image:  #a0: endereco do inicio do vetor #a1: endereco vetor filtro
+  #alocar espaco para a copia na pilha
+  addi sp, sp, -256
 
-filter_1d_image:
-ret
+  li t0, 0 #i
+  li t1, 256
+  #copiar vetor para a pilha
+  for_i_copiar_vetor:
+    bge t0, t1, final_for_i_copia #percorrer o vetor
+    add t2, t0, a0  #pegar o 
+    lb t2, 0(t2)    #pixel atual
+    add t3, t0, sp #passar para    
+    sb t2, 0(t3)    #a pilha
+    addi t0, t0, 1  #atualizar contador
+    j for_i_copiar_vetor
+  final_for_i_copia:
 
+
+  li t0, 0
+  li t1, 256
+  li t2, 0
+  li t3, 255
+  for_i_itera_vetor:  #para cada elemento de vetor, aplicar o filtro
+    bge t0, t1, final_for_i_itera # if t0 >= t1 then target
+    beq t0, t2, borda # if t0 == 0 then eh borda
+    beq t0, t3, borda # if t0 == 255 then eh borda
+
+    li a5, 0  #armazenara o resultado
+
+    add a2, t0, sp   #pixel anterior
+    lb a2, -1(a2)    #armazenado em a2
+
+    add a3, t0, sp  #pixel atual
+    lb a3, 0(a3)   #armazenado em a3
+
+    add a4, t0, sp  #pixel posterior
+    lb a4, 1(a4)    #armazenado em a4
+  
+    lb t4, 0(a1)  #primeiro numero do filtro
+    mul t5, t4, a2  #aplico o filtro no pixel anterior
+    add a5, a5, t5  #somo no resultado
+
+    lb t4, 1(a1)  #segundo elemento do filtro
+    mul t5, t4, a3  #aplico o filtro no pixel atual
+    add a5, a5, t5  #somo no resultado
+
+    lb t4, 2(a1)  #terceiro elemento do filtro
+    mul t5, t4, a4  #aplico o filtro no pixel posterior
+    add a5, a5, t5  #somo no resultado
+
+    #a5 armazena o valor do pixel
+    #verificar se eh negativo ou maior que 255
+    li t4, 0
+    blt a5, t4, setar_pixel_0 # if a5 < 0 then target
+    li t4, 255
+    bgt a5, t4, setar_pixel_255 # if a5 > 255 then target
+    
+    j setar_pixel
+    
+    setar_pixel_0:
+    li a5, 0
+    j setar_pixel
+
+    setar_pixel_255:
+    li a5, 255
+    j setar_pixel
+
+    borda:
+    li a5, 0
+
+    setar_pixel:
+    add t4, t0, a0  #posicao de armazenamento atual
+    sb a5, 0(t4)
+
+    addi t0, t0, 1  #atualiza contador
+    j for_i_itera_vetor
+  
+  final_for_i_itera:
+  addi sp, sp, 256
+  ret
 
 
 /*
@@ -215,7 +292,7 @@ gets:#a0: endereco da string
   li t4, 0
   while3:
   beq t0, t1, fim_get # if t0 == \n then fim_get
-  #beq t0, t4, fim_get # if t0 == \0 then fim_get
+  beq t0, t4, fim_get # if t0 == \0 then fim_get
   add a1, a1, t2
   li a0, 0
   li a2, 1
@@ -390,7 +467,7 @@ itoa: #a0 = numero #a1 endereco de armazenamento   a2: base
 sleep:
   addi sp, sp, -32
   sw ra, 0(sp)
-  sw a0, 4(sp)
+  sw a0, 4(sp)  #guardar tempo de espera
   jal get_time  #tempo inicial em milissegundos em a0
   mv a1, a0 #move o tempo inicial para a1
   lw a0, 4(sp)  #tempo de espera em a0
@@ -401,7 +478,6 @@ sleep:
   beq a0, s0, sleepou # if t0 == t1 then sleepou
   jal get_time
   j wait_for_time
-  
   sleepou:
   lw ra, 0(sp)
   lw s0, 8(sp)

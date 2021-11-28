@@ -312,6 +312,11 @@ _start:
   or t1, t1, t2
   csrw mie, t1
 
+  # Habilita Interrupções Global
+  csrr t1, mstatus # Seta o bit 3 (MIE)
+  ori t1, t1, 0x8 # do registrador mstatus
+  csrw mstatus, t1
+
   la t0, _system_time
   li t1, 0
   sw t1, 0(t0)
