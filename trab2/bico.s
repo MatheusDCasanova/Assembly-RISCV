@@ -118,8 +118,8 @@ get_rotation:
 */
 
 get_time:
-    la a0, _system_time
-    lw a0, 0(a0)
+    la t1, _system_time
+    lw a0, 0(t1)
     ret
 
 /******************************************************************************/
@@ -144,7 +144,7 @@ filter_1d_image:  #a0: endereco do inicio do vetor #a1: endereco vetor filtro
   for_i_copiar_vetor:
     bge t0, t1, final_for_i_copia #percorrer o vetor
     add t2, t0, a0  #pegar o 
-    lb t2, 0(t2)    #pixel atual
+    lbu t2, 0(t2)    #pixel atual
     add t3, t0, sp #passar para    
     sb t2, 0(t3)    #a pilha
     addi t0, t0, 1  #atualizar contador
@@ -164,13 +164,13 @@ filter_1d_image:  #a0: endereco do inicio do vetor #a1: endereco vetor filtro
     li a5, 0  #armazenara o resultado
 
     add a2, t0, sp   #pixel anterior
-    lb a2, -1(a2)    #armazenado em a2
+    lbu a2, -1(a2)    #armazenado em a2
 
     add a3, t0, sp  #pixel atual
-    lb a3, 0(a3)   #armazenado em a3
+    lbu a3, 0(a3)   #armazenado em a3
 
     add a4, t0, sp  #pixel posterior
-    lb a4, 1(a4)    #armazenado em a4
+    lbu a4, 1(a4)    #armazenado em a4
   
     lb t4, 0(a1)  #primeiro numero do filtro
     mul t5, t4, a2  #aplico o filtro no pixel anterior
@@ -235,41 +235,40 @@ display_image:
 */
 
 puts: #a0: endereco da string
+  #percorrer e ir escrevendo byte a byte ate encontrar o \0
+
   addi sp, sp, -16
   sw ra, 0(sp)
-  sw a0, 4(sp)
+  mv a1, a0 #guardar endereco em a1
+
   jal calcular_tamanho_string
-  #parametros para write
-  mv a2, a0 #tamanho
-  li a0, 1  #stdout
-  lw a1, 4(sp)  #buffer
+  add t0, a0, a1  #endereco do \0
+  li t1, 10       #t1 = \n
+  sb t1, 0(t0)    #\0 -> \n
+  mv a2, a0
+  addi a2, a2, 1
+  li a0, 1      #stdout
   li a7, 18
   ecall
-  li t0, '\n'
-  sb t0, 8(sp)
-  #parametros para write
-  addi a1, sp, 8  #endereco do \n na pilha
-  li a2, 1
-  li a0, 1
-  li a7, 18
-  ecall
-  lw ra, 0(sp)  #recupera ra
-  addi sp, sp, 16 #desaloca a pilha
-  li a0, 1
+
+  li t1, 0
+  sb t1, 0(t0)    #\n -> \0   
+
+  li a0, 1  #return non negative value in case of success
+  lw ra, 0(sp)
+  addi sp, sp, 16
   ret
 
 calcular_tamanho_string:
   #percorrer a numero enquanto posicao != \0 (ascii 0)
   li t0, 0
-  lbu t1, 0(a0)   #t1 = primeiro caractere
+  lb t1, 0(a0)   #t1 = primeiro caractere
   li t2, 0 #condicao de parada
-  li t3, 10
   while1:
-  beq t1, t2, contou1 # se o byte casrregado for \0, para o loop
-  beq t1, t3, contou1 # if t1 = \n then target
+  ble t1, t2, contou1 # se o byte casrregado for \0, para o loop
   addi t0, t0, 1
   add t1, t0, a0 #endereco do proximo algarismo em t1
-  lbu t1, 0(t1)  #carrega o algarismo em t1
+  lb t1, 0(t1)  #carrega o algarismo em t1
   j while1
 
   contou1:
@@ -281,13 +280,13 @@ gets:#a0: endereco da string
   sw ra, 0(sp)
   sw a0, 4(sp)
   #parametros do read
-  mv a1, a0
-  li a2, 1
-  li a0, 0
-  li a7, 17
+  mv a1, a0 #buffer em a1
+  li a2, 1  #size em a2
+  li a0, 0  #stdin em a0
+  li a7, 17 #syscall read
   ecall
   lb t0, 0(a1)
-  li t1, '\n' #condicao de parada
+  li t1, 10 #condicao de parada
   li t2, 1
   li t4, 0
   while3:
@@ -302,7 +301,7 @@ gets:#a0: endereco da string
   lb t0, 0(a1)
   j while3
   fim_get:
-  li t3, 0  #adicionar o \0 no final
+  li t3, 0  #adicionar o \0 no final (coloca no lugar do \n que foi lido)
   sb t3, 0(a1)
   lw ra, 0(sp)
   lw a0, 4(sp)
@@ -470,17 +469,15 @@ sleep:
   sw a0, 4(sp)  #guardar tempo de espera
   jal get_time  #tempo inicial em milissegundos em a0
   mv a1, a0 #move o tempo inicial para a1
-  lw a0, 4(sp)  #tempo de espera em a0
-  sw s0, 8(sp)
-  add s0, a1, a0  #tempo inicial mais espera desejada
+  lw a0, 4(sp)  #recupera tempo de espera em a0
+  add t0, a1, a0  #tempo inicial mais espera desejada
   jal get_time
   wait_for_time:  #executar enquanto time !=  tempo incial mais espera desejada
-  beq a0, s0, sleepou # if t0 == t1 then sleepou
+  bge a0, t0, sleepou 
   jal get_time
   j wait_for_time
   sleepou:
   lw ra, 0(sp)
-  lw s0, 8(sp)
   addi sp, sp, 32
   ret
 

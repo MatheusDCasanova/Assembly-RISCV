@@ -7,15 +7,54 @@ topo_stack_isr:
 
 _system_time: .skip 4
 
-/*user_stack:
-.skip 2048
-top_user_stack:
-*/
-#0xFFFF0500 - Serial port
-#0xFFFF0700 - Canva
-
 .text
 .align 4
+
+
+#---------------------------------------------------------------------
+_start:
+  la t0, int_handler  # Carregar o endereço da rotina que tratará as interrupções
+  csrw mtvec, t0      # (e syscalls) no registrador MTVEC para configurar
+                      # o vetor de interrupções.
+# Escreva aqui o código para mudar para modo de usuário e chamar a função user_main (definida em outro arquivo).
+# Lembre-se de inicializar a pilha do usuário para que seu programa possa utilizá-la.
+
+  #configurando pilha
+  la t0, topo_stack_isr
+  csrw mscratch, t0
+
+  #configurando pilha do usuario
+  li sp, 0x07FFFFFC
+
+  # Habilita Interrupções Externas
+  csrr t1, mie # Seta o bit 11 (MEIE)
+  li t2, 0x800 # do registrador mie
+  or t1, t1, t2
+  csrw mie, t1
+
+  # Habilita Interrupções Global
+  csrr t1, mstatus # Seta o bit 3 (MIE)
+  ori t1, t1, 0x8 # do registrador mstatus
+  csrw mstatus, t1
+
+  la t0, _system_time
+  li t1, 0
+  sw t1, 0(t0)
+
+  li t0, 0xFFFF0100   #base GPT
+  li t1, 100
+  sw t1, 8(t0)
+
+  csrr t1, mstatus # Update the mstatus.MPP
+  li t2, ~0x1800 # field (bits 11 and 12)
+  and t1, t1, t2 # with value 00 (U-mode)
+  csrw mstatus, t1
+  la t0, main # Loads the user software
+  csrw mepc, t0 # entry point into mepc
+  mret
+
+
+
 
 Syscall_set_motor: #a0 sentido do deslocamento, #a1 angulo
   li t0, -127
@@ -270,9 +309,8 @@ int_handler:
 
   #Programar para gerar interrupação daqui 100ms
   li t0, 0xFFFF0100   
-  addi t0, t0, 8
   li t1, 100
-  sw t1, 0(t0)
+  sw t1, 8(t0)
 
   
   syscall_realizada:
@@ -290,46 +328,3 @@ int_handler:
   addi sp, sp, 48 
   csrrw sp, mscratch, sp
   mret           # Recuperar o restante do contexto (pc <- mepc)
-
-#---------------------------------------------------------------------
-_start:
-  la t0, int_handler  # Carregar o endereço da rotina que tratará as interrupções
-  csrw mtvec, t0      # (e syscalls) no registrador MTVEC para configurar
-                      # o vetor de interrupções.
-# Escreva aqui o código para mudar para modo de usuário e chamar a função user_main (definida em outro arquivo).
-# Lembre-se de inicializar a pilha do usuário para que seu programa possa utilizá-la.
-
-  #configurando pilha
-  la t0, topo_stack_isr
-  csrw mscratch, t0
-
-  #configurando pilha do usuario
-  li sp, 0x07FFFFFC
-
-  # Habilita Interrupções Externas
-  csrr t1, mie # Seta o bit 11 (MEIE)
-  li t2, 0x800 # do registrador mie
-  or t1, t1, t2
-  csrw mie, t1
-
-  # Habilita Interrupções Global
-  csrr t1, mstatus # Seta o bit 3 (MIE)
-  ori t1, t1, 0x8 # do registrador mstatus
-  csrw mstatus, t1
-
-  la t0, _system_time
-  li t1, 0
-  sw t1, 0(t0)
-
-  li t0, 0xFFFF0100   #base GPT
-  addi t0, t0, 8
-  li t1, 100
-  sw t1, 0(t0)
-
-  csrr t1, mstatus # Update the mstatus.MPP
-  li t2, ~0x1800 # field (bits 11 and 12)
-  and t1, t1, t2 # with value 00 (U-mode)
-  csrw mstatus, t1
-  la t0, main # Loads the user software
-  csrw mepc, t0 # entry point into mepc
-  mret
