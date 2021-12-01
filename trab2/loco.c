@@ -90,7 +90,7 @@ int main(void)
     while (1)
     {
         set_motor(1, PID(target));
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 14; i++)
         {
             set_motor(0, PID(target));
         }
