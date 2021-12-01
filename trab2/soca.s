@@ -19,12 +19,17 @@ _start:
 # Escreva aqui o código para mudar para modo de usuário e chamar a função user_main (definida em outro arquivo).
 # Lembre-se de inicializar a pilha do usuário para que seu programa possa utilizá-la.
 
+  #Configurando o GPT
+  li t0, 0xFFFF0100   #base GPT
+  li t1, 0
+  sw t1, 8(t0)
+
   #configurando pilha
   la t0, topo_stack_isr
   csrw mscratch, t0
 
   #configurando pilha do usuario
-  li sp, 0x07FFFFFC
+  li sp, 0x7FFFFFC
 
   # Habilita Interrupções Externas
   csrr t1, mie # Seta o bit 11 (MEIE)
@@ -37,18 +42,21 @@ _start:
   ori t1, t1, 0x8 # do registrador mstatus
   csrw mstatus, t1
 
+  #Inicializando _system_time
   la t0, _system_time
   li t1, 0
   sw t1, 0(t0)
-
-  li t0, 0xFFFF0100   #base GPT
-  li t1, 100
-  sw t1, 8(t0)
 
   csrr t1, mstatus # Update the mstatus.MPP
   li t2, ~0x1800 # field (bits 11 and 12)
   and t1, t1, t2 # with value 00 (U-mode)
   csrw mstatus, t1
+
+  #programando para gerar interrupções GPT
+  li t0, 0xFFFF0100   #base GPT
+  li t1, 100
+  sw t1, 8(t0)
+
   la t0, main # Loads the user software
   csrw mepc, t0 # entry point into mepc
   mret
@@ -275,11 +283,13 @@ int_handler:
   sw t6, 24(sp)
   sw ra, 28(sp)
 
+  mcause_test:
   csrr t0, mcause #read the cause of the interupt
   andi t0, t0, 0x3f #isolates the EXCCODE
   li   t1, 11
   beq  t0, t1, GPT
 
+  escolha_syscall:
   li t1, 10
   beq a7, t1, Syscall_set_motor
   li t1, 11
@@ -301,22 +311,25 @@ int_handler:
 
   GPT:
   #Atualizar _system_time
-  la t0, _system_time
-  lw t1, 0(t0)
-  li t2, 100
-  add t1, t1, t2
-  sw t1, 0(t0)
+  la t2, _system_time
+  lw t3, 0(t2)
+  li t4, 100
+  add t3, t3, t4
+  sw t3, 0(t2)
 
   #Programar para gerar interrupação daqui 100ms
-  li t0, 0xFFFF0100   
-  li t1, 100
-  sw t1, 8(t0)
+  li t2, 0xFFFF0100   
+  li t3, 100
+  sw t3, 8(t2)
+
+  j recover
 
   
   syscall_realizada:
   csrr t0, mepc  # carrega endereço de retorno (endereço da instrução que invocou a syscall)
   addi t0, t0, 4 # soma 4 no endereço de retorno (para retornar após a ecall) 
   csrw mepc, t0  # armazena endereço de retorno de volta no mepc
+  recover:
   lw t0, 0(sp)
   lw t1, 4(sp)
   lw t2, 8(sp)
